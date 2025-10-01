@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}{{ assessment.title }} - Modern360{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <!-- Compact Header -->
+            <div class="mb-4">
+                <h3 class="mb-2">{{ assessment.title }}</h3>
+                {% if assessment.description %}
+                    <p class="text-muted mb-0">{{ assessment.description }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Assessment Form -->
+            <form id="assessmentForm">
+                {% for question in assessment.questions|sort(attribute='order') %}
+                    <!-- Question -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ loop.index }}. {{ question.question_text }}</label>
+                        {% if question.question_type == 'rating' %}
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check question-input" name="q{{ question.id }}" value="1" id="q{{ question.id }}_1" required>
+                                <label class="btn btn-outline-primary" for="q{{ question.id }}_1">1</label>
+
+                                <input type="radio" class="btn-check question-input" name="q{{ question.id }}" value="2" id="q{{ question.id }}_2" required>
+                                <label class="btn btn-outline-primary" for="q{{ question.id }}_2">2</label>
+
+                                <input type="radio" class="btn-check question-input" name="q{{ question.id }}" value="3" id="q{{ question.id }}_3" required>
+                                <label class="btn btn-outline-primary" for="q{{ question.id }}_3">3</label>
+
+                                <input type="radio" class="btn-check question-input" name="q{{ question.id }}" value="4" id="q{{ question.id }}_4" required>
+                                <label class="btn btn-outline-primary" for="q{{ question.id }}_4">4</label>
+
+                                <input type="radio" class="btn-check question-input" name="q{{ question.id }}" value="5" id="q{{ question.id }}_5" required>
+                                <label class="btn btn-outline-primary" for="q{{ question.id }}_5">5</label>
+                            </div>
+                            <small class="text-muted d-block mt-1">1 = Vrlo loše, 5 = Odlično</small>
+                        {% elif question.question_type == 'text' %}
+                            <textarea class="form-control question-input" name="q{{ question.id }}" rows="2" placeholder="Vaš odgovor..." required></textarea>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <!-- Progress & Submit -->
+                <div class="sticky-bottom bg-white border-top p-3 mt-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="progressBar"></div>
+                            </div>
+                            <small class="text-muted">Popunjeno: <span id="progressText">0%</span></small>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn" disabled>
+                            Pošalji
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const form = document.getElementById('assessmentForm');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const submitBtn = document.getElementById('submitBtn');
+
+// Track form completion
+function updateProgress() {
+    const allInputs = document.querySelectorAll('.question-input');
+    const radioGroups = new Set();
+    const textareas = [];
+
+    // Separate radio groups and textareas
+    allInputs.forEach(input => {
+        if (input.type === 'radio') {
+            radioGroups.add(input.name);
+        } else if (input.tagName === 'TEXTAREA') {
+            textareas.push(input);
+        }
+    });
+
+    const totalQuestions = radioGroups.size + textareas.length;
+    let completed = 0;
+
+    // Check radio groups
+    radioGroups.forEach(name => {
+        if (document.querySelector(`input[name="${name}"]:checked`)) {
+            completed++;
+        }
+    });
+
+    // Check textareas
+    textareas.forEach(textarea => {
+        if (textarea.value.trim().length > 0) {
+            completed++;
+        }
+    });
+
+    const percentage = totalQuestions > 0 ? Math.round((completed / totalQuestions) * 100) : 0;
+    progressBar.style.width = percentage + '%';
+    progressText.textContent = percentage + '%';
+
+    // Enable submit button when form is complete
+    submitBtn.disabled = percentage < 100;
+}
+
+// Add event listeners
+document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', updateProgress);
+});
+
+document.querySelectorAll('textarea').forEach(textarea => {
+    textarea.addEventListener('input', updateProgress);
+});
+
+// Form submission
+form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Collect all responses
+    const responses = {};
+    
+    // Collect radio responses
+    document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+        responses[radio.name] = radio.value;
+    });
+    
+    // Collect textarea responses
+    document.querySelectorAll('textarea').forEach(textarea => {
+        responses[textarea.name] = textarea.value.trim();
+    });
+    
+    // Show loading state
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Šalje se...';
+    submitBtn.disabled = true;
+    
+    // Submit responses
+    fetch(`/submit_response/{{ invitation.token }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(responses)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            document.body.innerHTML = `
+                <div class="container my-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-6 text-center">
+                            <div class="card border-success">
+                                <div class="card-body py-5">
+                                    <div class="text-success mb-4" style="font-size: 5rem;">✓</div>
+                                    <h2 class="text-success mb-3">Hvala!</h2>
+                                    <p class="text-muted">Vaša procjena je uspješno poslana.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            alert('Greška pri slanju. Molimo pokušajte ponovo.');
+            submitBtn.innerHTML = 'Pošalji';
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Greška pri slanju. Molimo pokušajte ponovo.');
+        submitBtn.innerHTML = 'Pošalji';
+        submitBtn.disabled = false;
+    });
+});
+
+// Initial progress check
+updateProgress();
+</script>
+{% endblock %}
