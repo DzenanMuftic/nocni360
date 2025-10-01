@@ -9,13 +9,9 @@ Admin credentials: admin / admin123
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_mail import Mail, Message
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta
+from datetime import datetime
 import secrets
 import os
-from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
-import random
-import string
 from dotenv import load_dotenv
 import json
 
@@ -64,6 +60,16 @@ def datetime_filter(dt, format='%Y-%m-%d %H:%M'):
     if dt is None:
         return ""
     return dt.strftime(format)
+
+@admin_app.template_filter('from_json')
+def from_json_filter(json_string):
+    """Parse JSON string for templates"""
+    if not json_string:
+        return {}
+    try:
+        return json.loads(json_string)
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 # Import models from main app (we'll use the same database)
 class Company(db.Model):
@@ -160,6 +166,58 @@ class AssessmentResponse(db.Model):
     response_type = db.Column(db.String(20), default='assessor')  # 'self' or 'assessor'
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ResponseDetail(db.Model):
+    __tablename__ = 'response_details'
+    id = db.Column(db.Integer, primary_key=True)
+    assessment_response_id = db.Column(db.Integer, db.ForeignKey('assessment_response.id'), nullable=False)
+    assessment_id = db.Column(db.Integer, db.ForeignKey('assessment.id'), nullable=False)
+    invitation_id = db.Column(db.Integer, db.ForeignKey('invitation.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    respondent_email = db.Column(db.String(120))
+    assessment_title = db.Column(db.String(200))
+    submitted_at = db.Column(db.DateTime)
+
+    # Individual question columns (q1-q39)
+    q1 = db.Column(db.String(10))
+    q2 = db.Column(db.String(10))
+    q3 = db.Column(db.String(10))
+    q4 = db.Column(db.String(10))
+    q5 = db.Column(db.String(10))
+    q6 = db.Column(db.String(10))
+    q7 = db.Column(db.String(10))
+    q8 = db.Column(db.String(10))
+    q9 = db.Column(db.String(10))
+    q10 = db.Column(db.String(10))
+    q11 = db.Column(db.String(10))
+    q12 = db.Column(db.String(10))
+    q13 = db.Column(db.String(10))
+    q14 = db.Column(db.String(10))
+    q15 = db.Column(db.String(10))
+    q16 = db.Column(db.String(10))
+    q17 = db.Column(db.String(10))
+    q18 = db.Column(db.String(10))
+    q19 = db.Column(db.String(10))
+    q20 = db.Column(db.String(10))
+    q21 = db.Column(db.String(10))
+    q22 = db.Column(db.String(10))
+    q23 = db.Column(db.String(10))
+    q24 = db.Column(db.String(10))
+    q25 = db.Column(db.String(10))
+    q26 = db.Column(db.String(10))
+    q27 = db.Column(db.String(10))
+    q28 = db.Column(db.String(10))
+    q29 = db.Column(db.String(10))
+    q30 = db.Column(db.String(10))
+    q31 = db.Column(db.String(10))
+    q32 = db.Column(db.String(10))
+    q33 = db.Column(db.String(10))
+    q34 = db.Column(db.String(10))
+    q35 = db.Column(db.String(10))
+    q36 = db.Column(db.String(10))
+    q37 = db.Column(db.String(10))
+    q38 = db.Column(db.String(10))
+    q39 = db.Column(db.String(10))
+
 # Admin credentials
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
@@ -206,20 +264,20 @@ def admin_logout():
 @admin_app.route('/dashboard')
 @admin_required
 def admin_dashboard():
-    # Get statistics
+    # Get all statistics efficiently
     total_companies = Company.query.count()
     total_users = User.query.count()
     total_assessments = Assessment.query.count()
     active_assessments = Assessment.query.filter_by(is_active=True).count()
     total_responses = AssessmentResponse.query.count()
     pending_invitations = Invitation.query.filter_by(is_completed=False).count()
-    
-    # Recent activity
+
+    # Recent activity - optimized queries with limits
     recent_companies = Company.query.order_by(Company.created_at.desc()).limit(5).all()
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
     recent_assessments = Assessment.query.order_by(Assessment.created_at.desc()).limit(5).all()
     recent_responses = AssessmentResponse.query.order_by(AssessmentResponse.submitted_at.desc()).limit(5).all()
-    
+
     return render_template('admin_dashboard.html',
                          total_companies=total_companies,
                          total_users=total_users,
@@ -527,12 +585,10 @@ def api_create_user():
         name = data.get('name', '').strip()
         company_id = data.get('company_id')
         role = data.get('role', 'user')
-        
-        print(f"DEBUG: Received data - name: {name}, email: {email}, company_id: {company_id}, role: {role}")
-        
+
         if not email or not name or not company_id:
             return jsonify({'success': False, 'message': 'Email, name, and company are required!'})
-        
+
         # Convert company_id to int
         try:
             company_id = int(company_id)
@@ -542,7 +598,6 @@ def api_create_user():
         # Check if user already exists - if so, return the existing user
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
-            print(f"DEBUG: User already exists - ID: {existing_user.id}, Name: {existing_user.name}, Email: {existing_user.email}")
             return jsonify({
                 'success': True,
                 'user': {
@@ -557,20 +612,18 @@ def api_create_user():
         company = Company.query.get(company_id)
         if not company:
             return jsonify({'success': False, 'message': 'Company not found!'})
-        
+
         # Create new user
         user = User(
-            email=email, 
-            name=name, 
+            email=email,
+            name=name,
             company=company.name,  # Legacy field
-            company_id=company_id, 
+            company_id=company_id,
             role=role
         )
         db.session.add(user)
         db.session.commit()
-        
-        print(f"DEBUG: Successfully created user - ID: {user.id}, Name: {user.name}, Email: {user.email}")
-        
+
         return jsonify({
             'success': True,
             'user': {
@@ -580,9 +633,8 @@ def api_create_user():
                 'role': user.role
             }
         })
-        
+
     except Exception as e:
-        print(f"ERROR: Exception in api_create_user: {e}")
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Server error: {str(e)}'})
 
@@ -744,9 +796,9 @@ def admin_create_assessment():
                     try:
                         send_self_assessment_invitation(participant.assessee.email, assessment, token)
                         sent_count += 1
-                    except Exception as e:
-                        print(f"Error sending self-assessment invitation: {e}")
-                
+                    except Exception:
+                        pass
+
                 # Send invitation to assessor
                 else:
                     token = secrets.token_urlsafe(32)
@@ -757,13 +809,13 @@ def admin_create_assessment():
                         token=token
                     )
                     db.session.add(invitation)
-                    
+
                     try:
-                        send_assessor_invitation(participant.assessor.email, assessment, 
+                        send_assessor_invitation(participant.assessor.email, assessment,
                                                participant.assessee.name, token)
                         sent_count += 1
-                    except Exception as e:
-                        print(f"Error sending assessor invitation: {e}")
+                    except Exception:
+                        pass
             
             db.session.commit()
         
@@ -796,7 +848,8 @@ def admin_edit_assessment(assessment_id):
             flash('Assessment title and company are required!', 'error')
             companies = Company.query.filter_by(is_active=True).all()
             users = User.query.filter_by(is_active=True).all()
-            return render_template('admin_edit_assessment.html', assessment=assessment, companies=companies, users=users)
+            response_details = ResponseDetail.query.filter_by(assessment_id=assessment_id).all()
+            return render_template('admin_edit_assessment.html', assessment=assessment, companies=companies, users=users, response_details=response_details)
         
         assessment.company_id = company_id
         
@@ -808,7 +861,8 @@ def admin_edit_assessment(assessment_id):
                 flash('Invalid deadline format!', 'error')
                 companies = Company.query.filter_by(is_active=True).all()
                 users = User.query.filter_by(is_active=True).all()
-                return render_template('admin_edit_assessment.html', assessment=assessment, companies=companies, users=users)
+                response_details = ResponseDetail.query.filter_by(assessment_id=assessment_id).all()
+                return render_template('admin_edit_assessment.html', assessment=assessment, companies=companies, users=users, response_details=response_details)
         else:
             assessment.deadline = None
         
@@ -821,8 +875,11 @@ def admin_edit_assessment(assessment_id):
     
     companies = Company.query.filter_by(is_active=True).all()
     users = User.query.filter_by(is_active=True).all()
-    
-    return render_template('admin_edit_assessment.html', assessment=assessment, companies=companies, users=users)
+
+    # Get response details from new table
+    response_details = ResponseDetail.query.filter_by(assessment_id=assessment_id).all()
+
+    return render_template('admin_edit_assessment.html', assessment=assessment, companies=companies, users=users, response_details=response_details)
 
 
 @admin_app.route('/assessments/<int:assessment_id>/participants')
@@ -910,9 +967,9 @@ def admin_send_assessment_invitations(assessment_id):
             try:
                 send_self_assessment_invitation(participant.assessee.email, assessment, token)
                 sent_count += 1
-            except Exception as e:
-                print(f"Error sending self-assessment invitation: {e}")
-        
+            except Exception:
+                pass
+
         # Send invitation to assessor
         else:
             token = secrets.token_urlsafe(32)
@@ -923,13 +980,13 @@ def admin_send_assessment_invitations(assessment_id):
                 token=token
             )
             db.session.add(invitation)
-            
+
             try:
-                send_assessor_invitation(participant.assessor.email, assessment, 
+                send_assessor_invitation(participant.assessor.email, assessment,
                                        participant.assessee.name, token)
                 sent_count += 1
-            except Exception as e:
-                print(f"Error sending assessor invitation: {e}")
+            except Exception:
+                pass
     
     db.session.commit()
     flash(f'Sent {sent_count} invitations successfully!', 'success')
@@ -963,10 +1020,9 @@ def admin_delete_assessment(assessment_id):
         db.session.commit()
 
         flash(f'Assessment "{title}" deleted successfully!', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting assessment: {e}")
         flash(f'Error deleting assessment: {str(e)}', 'error')
     
     return redirect(url_for('admin_assessments'))
@@ -1021,11 +1077,11 @@ def admin_send_invitations():
             db.session.add(invitation)
             sent_count += 1
             
-            # Send email (implement email sending here)
+            # Send email
             try:
                 send_invitation_email(email, assessment, token)
-            except Exception as e:
-                print(f"Error sending email to {email}: {e}")
+            except Exception:
+                pass
         
         db.session.commit()
         flash(f'Sent {sent_count} invitations successfully!', 'success')
@@ -1170,109 +1226,71 @@ def send_reminder(invitation_id):
     
     return redirect(url_for('admin_notifications'))
 
+def send_invitation_email_base(email, subject, body):
+    """Base email sending function"""
+    msg = Message(
+        subject=subject,
+        recipients=[email],
+        sender=admin_app.config['MAIL_DEFAULT_SENDER']
+    )
+    msg.body = body
+    mail.send(msg)
+
 def send_self_assessment_invitation(email, assessment, token):
     """Send self-assessment invitation email"""
-    try:
-        subject = f"Complete Your Self-Assessment - {assessment.title}"
-        
-        # Create the invitation URL (pointing to main app)
-        main_app_url = os.environ.get('MAIN_APP_URL', 'http://localhost:5000')
-        invitation_url = f"{main_app_url}/respond/{token}"
-        
-        msg = Message(
-            subject=subject,
-            recipients=[email],
-            sender=admin_app.config['MAIL_DEFAULT_SENDER']
-        )
-        
-        body = f"""
-        You have been invited to complete a self-assessment.
-        
-        Assessment: {assessment.title}
-        Company: {assessment.company_ref.name}
-        Description: {assessment.description or 'No description provided'}
-        
-        Please click the link below to complete your self-assessment:
-        {invitation_url}
-        
-        This is a self-assessment where you will evaluate your own performance.
-        """
-        
-        msg.body = body
-        mail.send(msg)
-        
-    except Exception as e:
-        print(f"Error sending self-assessment email: {e}")
-        raise
+    main_app_url = os.environ.get('MAIN_APP_URL', 'http://localhost:5000')
+    invitation_url = f"{main_app_url}/respond/{token}"
+
+    subject = f"Complete Your Self-Assessment - {assessment.title}"
+    body = f"""You have been invited to complete a self-assessment.
+
+Assessment: {assessment.title}
+Company: {assessment.company_ref.name}
+Description: {assessment.description or 'No description provided'}
+
+Please click the link below to complete your self-assessment:
+{invitation_url}
+
+This is a self-assessment where you will evaluate your own performance."""
+
+    send_invitation_email_base(email, subject, body)
 
 def send_assessor_invitation(email, assessment, assessee_name, token):
     """Send assessor invitation email"""
-    try:
-        subject = f"Assess {assessee_name} - {assessment.title}"
-        
-        # Create the invitation URL (pointing to main app)
-        main_app_url = os.environ.get('MAIN_APP_URL', 'http://localhost:5000')
-        invitation_url = f"{main_app_url}/respond/{token}"
-        
-        msg = Message(
-            subject=subject,
-            recipients=[email],
-            sender=admin_app.config['MAIL_DEFAULT_SENDER']
-        )
-        
-        body = f"""
-        You have been invited to assess {assessee_name}.
-        
-        Assessment: {assessment.title}
-        Company: {assessment.company_ref.name}
-        Description: {assessment.description or 'No description provided'}
-        
-        Please click the link below to complete the assessment:
-        {invitation_url}
-        
-        You will be evaluating {assessee_name}'s performance in this assessment.
-        """
-        
-        msg.body = body
-        mail.send(msg)
-        
-    except Exception as e:
-        print(f"Error sending assessor email: {e}")
-        raise
+    main_app_url = os.environ.get('MAIN_APP_URL', 'http://localhost:5000')
+    invitation_url = f"{main_app_url}/respond/{token}"
+
+    subject = f"Assess {assessee_name} - {assessment.title}"
+    body = f"""You have been invited to assess {assessee_name}.
+
+Assessment: {assessment.title}
+Company: {assessment.company_ref.name}
+Description: {assessment.description or 'No description provided'}
+
+Please click the link below to complete the assessment:
+{invitation_url}
+
+You will be evaluating {assessee_name}'s performance in this assessment."""
+
+    send_invitation_email_base(email, subject, body)
 
 def send_invitation_email(email, assessment, token, is_reminder=False):
     """Send invitation email"""
-    try:
-        subject = f"{'Reminder: ' if is_reminder else ''}Assessment Invitation - {assessment.title}"
-        
-        # Create the invitation URL (pointing to main app)
-        main_app_url = os.environ.get('MAIN_APP_URL', 'http://localhost:5000')
-        invitation_url = f"{main_app_url}/respond/{token}"
-        
-        msg = Message(
-            subject=subject,
-            recipients=[email],
-            sender=admin_app.config['MAIL_DEFAULT_SENDER']
-        )
-        
-        body = f"""
-        {'This is a reminder that you have' if is_reminder else 'You have'} been invited to complete an assessment.
-        
-        Assessment: {assessment.title}
-        Description: {assessment.description or 'No description provided'}
-        
-        Please click the link below to complete the assessment:
-        {invitation_url}
-        
-        {'Please complete this assessment as soon as possible.' if is_reminder else 'Thank you for your participation.'}
-        """
-        
-        msg.body = body
-        mail.send(msg)
-        
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        raise
+    main_app_url = os.environ.get('MAIN_APP_URL', 'http://localhost:5000')
+    invitation_url = f"{main_app_url}/respond/{token}"
+
+    subject = f"{'Reminder: ' if is_reminder else ''}Assessment Invitation - {assessment.title}"
+    body = f"""{'This is a reminder that you have' if is_reminder else 'You have'} been invited to complete an assessment.
+
+Assessment: {assessment.title}
+Description: {assessment.description or 'No description provided'}
+
+Please click the link below to complete the assessment:
+{invitation_url}
+
+{'Please complete this assessment as soon as possible.' if is_reminder else 'Thank you for your participation.'}"""
+
+    send_invitation_email_base(email, subject, body)
 
 @admin_app.before_request
 def create_tables():

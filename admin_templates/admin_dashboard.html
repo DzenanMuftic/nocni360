@@ -139,22 +139,16 @@
                             <h6 class="mb-0">{{ user.name }}</h6>
                             <small class="text-muted">{{ user.email }}</small>
                             {% if user.company %}
-                            <br><small class="text-primary">
-                                <i class="fas fa-building" style="font-size: 10px;"></i> {{ user.company }}
-                            </small>
+                            <br><small class="text-primary"><i class="fas fa-building" style="font-size:10px"></i> {{ user.company }}</small>
                             {% endif %}
                         </div>
-                        <span class="badge bg-{{ 'success' if user.is_active else 'secondary' }}">
-                            {{ user.role.title() }}
-                        </span>
+                        <span class="badge bg-{{ 'success' if user.is_active else 'secondary' }}">{{ user.role.title() }}</span>
                     </div>
                     {% endfor %}
                 {% else %}
                     <p class="text-muted text-center">No users found</p>
                 {% endif %}
             </div>
-        </div>
-    </div>
         </div>
     </div>
 
@@ -228,32 +222,14 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-lightning-bolt me-2"></i>Quick Actions
-                </h5>
+                <h5 class="mb-0"><i class="fas fa-lightning-bolt me-2"></i>Quick Actions</h5>
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-3">
-                        <a href="{{ url_for('admin_create_assessment') }}" class="btn btn-primary w-100 mb-2">
-                            <i class="fas fa-plus me-2"></i>Create Assessment
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{{ url_for('admin_send_invitations') }}" class="btn btn-success w-100 mb-2">
-                            <i class="fas fa-envelope me-2"></i>Send Invitations
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{{ url_for('admin_create_user') }}" class="btn btn-info w-100 mb-2">
-                            <i class="fas fa-user-plus me-2"></i>Add User
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{{ url_for('admin_notifications') }}" class="btn btn-warning w-100 mb-2">
-                            <i class="fas fa-bell me-2"></i>Notifications
-                        </a>
-                    </div>
+                    <div class="col-md-3"><a href="{{ url_for('admin_create_assessment') }}" class="btn btn-primary w-100 mb-2"><i class="fas fa-plus me-2"></i>Create Assessment</a></div>
+                    <div class="col-md-3"><a href="{{ url_for('admin_send_invitations') }}" class="btn btn-success w-100 mb-2"><i class="fas fa-envelope me-2"></i>Send Invitations</a></div>
+                    <div class="col-md-3"><a href="{{ url_for('admin_create_user') }}" class="btn btn-info w-100 mb-2"><i class="fas fa-user-plus me-2"></i>Add User</a></div>
+                    <div class="col-md-3"><a href="{{ url_for('admin_notifications') }}" class="btn btn-warning w-100 mb-2"><i class="fas fa-bell me-2"></i>Notifications</a></div>
                 </div>
             </div>
         </div>

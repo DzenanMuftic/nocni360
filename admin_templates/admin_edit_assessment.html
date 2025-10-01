@@ -96,21 +96,29 @@
                 </div>
             </div>
             
-            <!-- Questions Preview -->
+            <!-- Questions Preview with Participant Responses -->
             {% if assessment.questions %}
             <div class="row mt-4">
                 <div class="col-12">
-                    <h6><i class="fas fa-question-circle me-2"></i>Assessment Questions ({{ assessment.questions|length }})</h6>
+                    <h6><i class="fas fa-question-circle me-2"></i>Assessment Questions with Participant Marks</h6>
                     <div class="alert alert-light">
                         <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
                                     <tr>
-                                        <th width="5%">#</th>
-                                        <th width="15%">Group</th>
-                                        <th width="60%">Question</th>
-                                        <th width="10%">Type</th>
-                                        <th width="10%">Language</th>
+                                        <th width="3%">#</th>
+                                        <th width="10%">Group</th>
+                                        <th width="30%">Question</th>
+                                        <th width="7%">Type</th>
+                                        {% for response_detail in response_details %}
+                                        <th width="10%" class="text-center">
+                                            {{ response_detail.respondent_email }}
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ response_detail.submitted_at.strftime('%m/%d %H:%M') if response_detail.submitted_at else '' }}
+                                            </small>
+                                        </th>
+                                        {% endfor %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -120,13 +128,33 @@
                                         <td>
                                             <span class="badge bg-secondary">{{ question.question_group or 'General' }}</span>
                                         </td>
-                                        <td>{{ question.question_text[:80] }}{{ '...' if question.question_text|length > 80 else '' }}</td>
+                                        <td>
+                                            {{ question.question_text[:100] }}{{ '...' if question.question_text|length > 100 else '' }}
+                                            <br>
+                                            <small class="text-muted">{{ (question.language|default('EN')).upper() }}</small>
+                                        </td>
                                         <td>
                                             <span class="badge bg-info">{{ question.question_type }}</span>
                                         </td>
-                                        <td>
-                                            <span class="badge bg-success">{{ question.language.upper() }}</span>
+                                        {% for response_detail in response_details %}
+                                        <td class="text-center">
+                                            {% set q_key = 'q' ~ (question.order + 1)|string %}
+                                            {% set answer = response_detail.__dict__.get(q_key) %}
+                                            {% if answer %}
+                                                {% if question.question_type == 'rating' %}
+                                                    <span class="badge bg-primary">{{ answer }}</span>
+                                                {% elif question.question_type == 'text' %}
+                                                    <span class="text-truncate d-inline-block" style="max-width: 100px;" title="{{ answer }}">
+                                                        {{ answer[:20] }}{{ '...' if answer|length > 20 else '' }}
+                                                    </span>
+                                                {% else %}
+                                                    {{ answer }}
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
                                         </td>
+                                        {% endfor %}
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -135,7 +163,7 @@
                         <div class="mt-2">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Note: Questions cannot be edited here. Create a new assessment with updated questions if needed.
+                                Note: Hover over text responses to see full content. Rating questions show numeric scores.
                             </small>
                         </div>
                     </div>

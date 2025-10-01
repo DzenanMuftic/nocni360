@@ -114,6 +114,58 @@ class AssessmentResponse(db.Model):
     responses = db.Column(db.Text)  # JSON string of responses
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ResponseDetail(db.Model):
+    __tablename__ = 'response_details'
+    id = db.Column(db.Integer, primary_key=True)
+    assessment_response_id = db.Column(db.Integer, db.ForeignKey('assessment_response.id'), nullable=False)
+    assessment_id = db.Column(db.Integer, db.ForeignKey('assessment.id'), nullable=False)
+    invitation_id = db.Column(db.Integer, db.ForeignKey('invitation.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    respondent_email = db.Column(db.String(120))
+    assessment_title = db.Column(db.String(200))
+    submitted_at = db.Column(db.DateTime)
+
+    # Individual question columns (q1-q39)
+    q1 = db.Column(db.String(10))
+    q2 = db.Column(db.String(10))
+    q3 = db.Column(db.String(10))
+    q4 = db.Column(db.String(10))
+    q5 = db.Column(db.String(10))
+    q6 = db.Column(db.String(10))
+    q7 = db.Column(db.String(10))
+    q8 = db.Column(db.String(10))
+    q9 = db.Column(db.String(10))
+    q10 = db.Column(db.String(10))
+    q11 = db.Column(db.String(10))
+    q12 = db.Column(db.String(10))
+    q13 = db.Column(db.String(10))
+    q14 = db.Column(db.String(10))
+    q15 = db.Column(db.String(10))
+    q16 = db.Column(db.String(10))
+    q17 = db.Column(db.String(10))
+    q18 = db.Column(db.String(10))
+    q19 = db.Column(db.String(10))
+    q20 = db.Column(db.String(10))
+    q21 = db.Column(db.String(10))
+    q22 = db.Column(db.String(10))
+    q23 = db.Column(db.String(10))
+    q24 = db.Column(db.String(10))
+    q25 = db.Column(db.String(10))
+    q26 = db.Column(db.String(10))
+    q27 = db.Column(db.String(10))
+    q28 = db.Column(db.String(10))
+    q29 = db.Column(db.String(10))
+    q30 = db.Column(db.String(10))
+    q31 = db.Column(db.String(10))
+    q32 = db.Column(db.String(10))
+    q33 = db.Column(db.String(10))
+    q34 = db.Column(db.String(10))
+    q35 = db.Column(db.String(10))
+    q36 = db.Column(db.String(10))
+    q37 = db.Column(db.String(10))
+    q38 = db.Column(db.String(10))
+    q39 = db.Column(db.String(10))
+
 # Routes
 @app.route('/')
 def index():
@@ -389,16 +441,37 @@ def submit_response(token):
         return jsonify({'error': 'Assessment already completed'}), 400
 
     # Save response - convert dict to JSON string
+    response_data = request.get_json()
     response = AssessmentResponse(
         assessment_id=invitation.assessment_id,
         invitation_id=invitation.id,
-        responses=json.dumps(request.get_json())
+        responses=json.dumps(response_data)
     )
 
     invitation.is_completed = True
     invitation.responded_at = datetime.utcnow()
 
     db.session.add(response)
+    db.session.commit()
+
+    # Also save to new detailed response table
+    assessment = Assessment.query.get(invitation.assessment_id)
+    response_detail = ResponseDetail(
+        assessment_response_id=response.id,
+        assessment_id=invitation.assessment_id,
+        invitation_id=invitation.id,
+        respondent_email=invitation.email,
+        assessment_title=assessment.title if assessment else None,
+        submitted_at=datetime.utcnow()
+    )
+
+    # Set individual question responses
+    for i in range(1, 40):
+        q_key = f'q{i}'
+        if q_key in response_data:
+            setattr(response_detail, q_key, response_data[q_key])
+
+    db.session.add(response_detail)
     db.session.commit()
 
     return jsonify({'success': True})
@@ -450,17 +523,39 @@ def submit_self_assessment(id):
     
     if existing_response:
         return jsonify({'error': 'Self-assessment already completed'}), 400
-    
+
     # Save response
+    response_data = request.get_json()
     response = AssessmentResponse(
         assessment_id=id,
         user_id=session['user']['id'],
-        responses=request.get_json()
+        responses=json.dumps(response_data)
     )
-    
+
     db.session.add(response)
     db.session.commit()
-    
+
+    # Also save to new detailed response table
+    assessment = Assessment.query.get(id)
+    user = User.query.get(session['user']['id'])
+    response_detail = ResponseDetail(
+        assessment_response_id=response.id,
+        assessment_id=id,
+        user_id=session['user']['id'],
+        respondent_email=user.email if user else None,
+        assessment_title=assessment.title if assessment else None,
+        submitted_at=datetime.utcnow()
+    )
+
+    # Set individual question responses
+    for i in range(1, 40):
+        q_key = f'q{i}'
+        if q_key in response_data:
+            setattr(response_detail, q_key, response_data[q_key])
+
+    db.session.add(response_detail)
+    db.session.commit()
+
     return jsonify({'success': True})
 
 def send_verification_email(email, verification_code, login_token):

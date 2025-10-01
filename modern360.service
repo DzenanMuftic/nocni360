@@ -1,0 +1,15 @@
+[Unit]
+Description=Modern360 Assessment Platform WSGI Application
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/srv/nocni360
+Environment="PATH=/usr/bin:/usr/local/bin"
+ExecStart=/usr/bin/python3 /srv/nocni360/wsgi.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
