@@ -29,4 +29,5 @@ if __name__ == "__main__":
     # This runs when file is executed directly (not recommended for production)
     port = int(os.environ.get('PORT', 9000))
     from werkzeug.serving import run_simple
+    # Bind to all interfaces (0.0.0.0) to accept connections from internet
     run_simple('0.0.0.0', port, application, use_reloader=False, use_debugger=False)

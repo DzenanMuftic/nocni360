@@ -34,7 +34,7 @@
 <a href="{{ url }}" class="btn btn-light btn-sm py-0 px-2" style="font-size:11px">View All</a>
 </div>
 <div class="card-body p-2">
-{% if items %}{{ caller(items) }}{% else %}<p class="text-muted text-center mb-0" style="font-size:12px">{{ empty_msg }}</p>{% endif %}
+{% if items %}{{ caller() }}{% else %}<p class="text-muted text-center mb-0" style="font-size:12px">{{ empty_msg }}</p>{% endif %}
 </div>
 </div>
 {%- endmacro %}

@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Modern360{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <h1 class="display-5 fw-bold mb-2">Welcome, {{ session.user.name }}!</h1>
+            <p class="text-muted">Manage your 360-degree assessments and track responses.</p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            <a href="{{ url_for('create_assessment') }}" class="btn btn-primary">
+                <span class="material-icons me-2">add</span>
+                Create Assessment
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <span class="material-icons text-primary" style="font-size: 2.5rem;">assessment</span>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Assessments</h6>
+                            <h2 class="mb-0">{{ assessments|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <span class="material-icons text-success" style="font-size: 2.5rem;">check_circle</span>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Active Assessments</h6>
+                            <h2 class="mb-0">{{ assessments|selectattr('is_active')|list|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <span class="material-icons text-info" style="font-size: 2.5rem;">rate_review</span>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Responses</h6>
+                            <h2 class="mb-0">{{ recent_responses|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assessments List -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="mb-0">
+                        <span class="material-icons align-middle me-2">folder</span>
+                        Your Assessments
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if assessments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>Created</th>
+                                    <th>Deadline</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assessment in assessments %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ assessment.title }}</strong>
+                                        {% if assessment.description %}
+                                        <br><small class="text-muted">{{ assessment.description[:60] }}{% if assessment.description|length > 60 %}...{% endif %}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assessment.is_self_assessment %}
+                                        <span class="badge bg-info">Self Assessment</span>
+                                        {% else %}
+                                        <span class="badge bg-primary">360° Feedback</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ assessment.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if assessment.deadline %}
+                                        {{ assessment.deadline.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                        <span class="text-muted">No deadline</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assessment.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('view_assessment', id=assessment.id) }}"
+                                               class="btn btn-outline-primary"
+                                               title="View">
+                                                <span class="material-icons" style="font-size: 16px;">visibility</span>
+                                            </a>
+                                            {% if assessment.is_self_assessment %}
+                                            <a href="{{ url_for('self_assess', id=assessment.id) }}"
+                                               class="btn btn-outline-success"
+                                               title="Complete Self-Assessment">
+                                                <span class="material-icons" style="font-size: 16px;">edit</span>
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('invite', id=assessment.id) }}"
+                                               class="btn btn-outline-info"
+                                               title="Send Invitations">
+                                                <span class="material-icons" style="font-size: 16px;">send</span>
+                                            </a>
+                                            {% endif %}
+                                            <a href="{{ url_for('edit_assessment', id=assessment.id) }}"
+                                               class="btn btn-outline-warning"
+                                               title="Edit">
+                                                <span class="material-icons" style="font-size: 16px;">edit</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <span class="material-icons text-muted mb-3" style="font-size: 4rem;">inbox</span>
+                        <h5 class="text-muted mb-3">No assessments yet</h5>
+                        <p class="text-muted mb-4">Create your first assessment to get started!</p>
+                        <a href="{{ url_for('create_assessment') }}" class="btn btn-primary">
+                            <span class="material-icons me-2">add</span>
+                            Create Assessment
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Responses -->
+    {% if recent_responses %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="mb-0">
+                        <span class="material-icons align-middle me-2">history</span>
+                        Recent Responses
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for response in recent_responses %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex w-100 justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ response.assessment.title }}</h6>
+                                    <p class="mb-1 text-muted small">
+                                        {% if response.user %}
+                                        Response from {{ response.user.name }} ({{ response.user.email }})
+                                        {% else %}
+                                        Anonymous response
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <small class="text-muted">{{ response.submitted_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.list-group-item {
+    transition: background-color 0.2s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

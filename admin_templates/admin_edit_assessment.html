@@ -111,10 +111,10 @@
                                         <th width="30%">Question</th>
                                         <th width="7%">Type</th>
                                         {% for response_detail in response_details %}
-                                        <th width="10%" class="text-center">
+                                        <th width="10%" class="text-center" style="color: #0d6efd;">
                                             {{ response_detail.respondent_email }}
                                             <br>
-                                            <small class="text-muted">
+                                            <small style="color: #0d6efd;">
                                                 {{ response_detail.submitted_at.strftime('%m/%d %H:%M') if response_detail.submitted_at else '' }}
                                             </small>
                                         </th>
